@@ -1,0 +1,16 @@
+{
+  "name": "CabinetJS",
+  "version": "0.0.1",
+  "main": "lib/cabinet.js",
+  "scripts": {
+    "test": "gulp test",
+    "dist": "gulp dist"
+  },
+  "devDependencies": {
+    "gulp": "~3.8.10",
+    "gulp-webpack": "~1.0.0",
+    "gulp-mocha": "~1.1.1",
+    "gulp-istanbul": "~0.3.1",
+    "lodash": "~2.4.1"
+  }
+}
