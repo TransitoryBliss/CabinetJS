@@ -40,6 +40,28 @@ describe("StaticModel.create", function () {
 		var myModel = MyModel.create({title: "My Title"});		
 
 		assert.strictEqual(myModel.title, "My Title")
-	});	
+	});		
+
+	it("can pass object with type and custom validation", function () {
+
+		function myValidator (value) {
+			if (value === "only allowed value")
+				return true;
+			else
+				throw new Error("Not an allowed value");
+		}
+
+		var User = Cabinet.createModel({
+			title: {
+				type: Cabinet.datatype.STRING,
+				myValidator: myValidator
+			}
+		});
+
+		var user = User.create({title: "My Title"});		
+
+		assert.strictEqual(user.title, "My Title")
+
+	});
 
 });
