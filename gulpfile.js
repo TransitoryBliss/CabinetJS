@@ -4,6 +4,7 @@ var mocha = require("gulp-mocha");
 var istanbul = require("gulp-istanbul");
 var rename = require("gulp-rename");
 var uglify = require("gulp-uglify");
+var jsdoc = require("gulp-jsdoc");
 var format = require("util").format;
 
 /**
@@ -24,6 +25,11 @@ var webpackConfig = {
 		filename: format("%s-%s.js", pkg.name, pkg.version).toLowerCase()
 	}
 }
+
+gulp.task("docs", function () {
+	gulp.src("./lib/**/*.js")
+  		.pipe(jsdoc('./docs'))
+})
 
 gulp.task("dist", function () {
 	var config = Object.create(webpackConfig);
