@@ -2,6 +2,8 @@ var gulp = require("gulp");
 var webpack = require("gulp-webpack");
 var mocha = require("gulp-mocha");
 var istanbul = require("gulp-istanbul");
+var rename = require("gulp-rename");
+var uglify = require("gulp-uglify");
 var format = require("util").format;
 
 /**
@@ -28,6 +30,9 @@ gulp.task("dist", function () {
 	return gulp.src("lib/cabinet.js")
 		.pipe(webpack(config))
 		.pipe(gulp.dest("dist/"))
+		.pipe(rename(format("%s-%s.min.js", pkg.name, pkg.version).toLowerCase()))
+		.pipe(uglify())
+		.pipe(gulp.dest("dist/"))
 });
 
 gulp.task("test", function (cb) {
@@ -38,7 +43,7 @@ gulp.task("test", function (cb) {
 				.pipe(mocha({ 
 					reporter: "spec"					
 				}))
-				.pipe(istanbul.writeReports({ reporters: ["text", "text-summary"] }))	
+				.pipe(istanbul.writeReports())	
 				.on("end", cb)							
 		})
 });

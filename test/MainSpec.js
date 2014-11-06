@@ -32,6 +32,16 @@ describe("StaticModel.create", function () {
 		assert.strictEqual(myModel.title, null)
 	});
 
+	it("ignores attribute if non-existing in schema", function () {
+		var MyModel = Cabinet.createModel({ 
+			title: Cabinet.datatype.STRING 
+		});
+		var myModel = MyModel.create({title: "My Title", nonExisting: "non existing" });		
+
+		assert.strictEqual(myModel.title, "My Title");
+		assert.strictEqual(myModel.nonExisting, undefined);
+	});	
+
 	it("assigns attributes to value when passed", function () {
 		var MyModel = Cabinet.createModel({ 
 			title: Cabinet.datatype.STRING 
@@ -49,8 +59,6 @@ describe("Model", function () {
 		username: Cabinet.datatype.STRING,
 		email: Cabinet.datatype.STRING
 	});
-
-
 
 	describe("#set", function () {
 
@@ -71,7 +79,7 @@ describe("Model", function () {
 
 	describe("#get", function () {
 
-		var user = User.create({ username: "TestUser" });
+		var user = User.create({ username: "TestUser" });		
 
 		it("can get existing attribute", function () {
 			assert.strictEqual(user.get("username"), "TestUser");
@@ -84,6 +92,57 @@ describe("Model", function () {
 		it("returns undefined if non-existing attribute", function () {
 			assert.strictEqual(user.get("nonExisting"), undefined);
 		});
+
+	});	
+
+	describe("#on (events)", function () {
+		
+		var User = Cabinet.createModel({ title: Cabinet.datatype.STRING });
+		
+
+		describe("before:set", function () {
+
+			it("should emit with args", function (done) {						
+				var user = User.create();
+				var fired = false;			
+				setTimeout(function () {
+					assert(fired, "Did not fire in 100ms");				
+					done();
+				}, 100);
+
+				user.on("before:set", function (attribute, value) {
+					fired = true;			
+					assert.equal(attribute, "title", "Did not pass attribute");
+					assert.equal(value, "My Title", "Did not pass value");							
+				});
+
+				user.set("title", "My Title");
+
+			});
+
+		});
+
+		describe("after:set", function () {
+
+			it("should emit with args", function (done) {						
+				var user = User.create();
+				var fired = false;			
+				setTimeout(function () {
+					assert(fired, "Did not fire in 100ms");				
+					done();
+				}, 100);
+
+				user.on("after:set", function (attribute, value) {
+					fired = true;			
+					assert.equal(attribute, "title", "Did not pass attribute");
+					assert.equal(value, user.get("title"), "Did not set value");							
+				});
+
+				user.set("title", "My Title");
+
+			});
+
+		});		
 
 	});
 
