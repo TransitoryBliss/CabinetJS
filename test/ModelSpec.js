@@ -129,5 +129,34 @@ describe("Model", function () {
 
 	});
 
+	describe("using attribute object", function () {
+
+		var User = Cabinet.createModel({
+			username: {
+				type: Cabinet.datatype.STRING,
+				myValidator: function (value) {
+					if (value === "john")
+						return true;
+					else
+						throw new Error("Not an allowed value");					
+				}
+			}
+		});
+
+		it("can pass object with type and custom validation", function () {
+			assert(User);			
+		});		
+
+		it("runs custom validation", function () {
+			
+			assert.throws(function() {
+				var user = User.create({ username: "not allowed" })
+			}, Error);
+
+			var user = User.create({ username: "john" });
+			assert.strictEqual(user.get("username"), "john");
+
+		});
+	})
 
 });

@@ -48,15 +48,45 @@ var Cabinet =
 	// 
 	// Dependencies
 	//
-	var _ = __webpack_require__(4);
+	var _ = __webpack_require__(5);
 
+	/**
+	 * @namespace Cabinet 
+	 * @example
+	 *  // Create a Model
+	 *  var Post = Cabinet.createModel({ 
+	 *    title: Cabinet.datatype.STRING
+	 *  });
+	 *  // Create an instance of a Post
+	 *  var myPost = Post.create();
+	 *  // Set some attribute
+	 *  myPost.set("title", "My Post Title");
+	 *  myPost.get("title") // => "My Post Title"
+	 *  // Save it!
+	 *  myPost.save(function () { ... });
+	 *  
+	 *  // Fetch data
+	 *  var Posts = Post.find().where({ title: "My Post Title"});
+	 *  Posts.exec(function (err, data) { ... });
+	 */
 	var Cabinet = {};
 
 	Cabinet.Model = __webpack_require__(1);
 	Cabinet.StaticModel = __webpack_require__(2);
+
+	/** 
+	 * @namespace Cabinet.datatype 
+	 */
 	Cabinet.datatype = __webpack_require__(3);
 
-
+	/**
+	 * Creates a static model.
+	 *
+	 * @function createModel
+	 * @memberOf Cabinet
+	 * @param  {schema} schema
+	 * @return {Cabinet.StaticModel}
+	 */
 	Cabinet.createModel = function (schema) {
 		
 		var staticModel = _.merge({}, Cabinet.StaticModel, { schema: schema });
@@ -70,21 +100,50 @@ var Cabinet =
 /* 1 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(4);
-	var EventEmitter = __webpack_require__(5).EventEmitter;
-	var util = __webpack_require__(6);
+	var _ = __webpack_require__(5);
+	var EventEmitter = __webpack_require__(6).EventEmitter;
+	var util = __webpack_require__(7);
 
+	/**
+	 * The Model instance.
+	 *
+	 * A model instance is created from the static model. 
+	 * *Do NOT use the new keyword*.
+	 *
+	 * @namespace Cabinet.Model
+	 * @example
+	 *  var User = Cabinet.createModel({ 
+	 *  	username: Cabinet.datatype.STRING 
+	 *  });
+	 *  var user = User.create({ 
+	 *  	username: "myUsername" 
+	 *  }); 
+	 *  user.set("username", "anotherUsername");
+	 *  console.log(user instanceof Cabinet.Model) // => true
+	 * @param {Object} schema
+	 * @param {Object} attributes 
+	 */
 	function Model (schema, attributes) {
 
 		var $ = this;
-
-		// We dont want schema to be a property of the instance...
-		// So we simulate a private member accessible through a getter
+		schema = Model.formatSchema(schema);
+		/**	 
+		 * We dont want schema to be a property of the instance...
+		 * So we simulate a private member accessible through a getter
+		 * 
+		 * @function getSchema
+		 * @memberOf Cabinet.Model#
+		 * @return {object} schema
+		 */
 		this.getSchema = function () {
 			return schema;		
 		}
 
-		// Assign all properties to null at first
+		// 
+		// Assign all properties to null at first. 
+		// The reasoning here is that it's easier to see all 
+		// attributes the model can hold. 
+		// 
 		_(schema).each(function (val, key) {		
 			$[key] = null;
 		});
@@ -103,22 +162,82 @@ var Cabinet =
 
 	util.inherits(Model, EventEmitter);
 
+	Model.formatSchema = function (schema) {
+		var target = {};
+
+		_(schema).each(function (val ,key) {
+			
+			if (_.isFunction(schema[key])) {			
+
+				target[key] = {
+					type: schema[key]
+				}
+
+			} else {
+				
+				target[key] = schema[key];
+
+			}
+
+		});
+
+
+
+		return target;
+	}
+
+	/**
+	 * Get an attribute
+	 *
+	 * @function get
+	 * @memberOf Cabinet.Model#
+	 * @param  {string} attribute 
+	 * @return {mixed} 
+	 */
 	Model.prototype.get = function (attribute) {
 		return this[attribute];
 	}
 
-	// @todo add validation
-	Model.prototype.set = function (attribute, val) {
+	/**
+	 * Set an attribute.
+	 * @function set 
+	 * @memberOf Cabinet.Model#
+	 * @param  {string} attribute 
+	 * @param {mixed} val value
+	 * @param {boolean} [notify=true] - Trigger events or not.
+	 * @return {this} 
+	 */
+	Model.prototype.set = function (attribute, val, notify) {
 		
+		notify = (notify === false) ? false : true;
+
 		var schema = this.getSchema();	
+		var attributeObject = schema[attribute];
 
-		if (!schema[attribute]) {
-			throw new Error("Can't set attribute that does not exist in schema.");
-		}
+		if (!attributeObject)
+			throw new Error("Can't set attribute that does not exist in the schema.");	
 
-		this.emit("before:set", attribute, val);	
+		if (notify === true)
+			this.emit("before:set", attribute, val);		
+
+		// Validates the datatype of the value
+		attributeObject.type(val);
+
+		// Validate against custom validations
+		_.each(attributeObject, function (validator, validatorName) {
+
+			if (validatorName === "type") 
+				return;		
+
+			validator(val);
+
+
+		});
+
 		this[attribute] = val;
-		this.emit("after:set", attribute, val);
+		
+		if (notify === true)
+			this.emit("after:set", attribute, val);
 
 		return this;
 	};
@@ -130,10 +249,23 @@ var Cabinet =
 /* 2 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(4);
+	var _ = __webpack_require__(5);
 	var Model = __webpack_require__(1);
+	var Query = __webpack_require__(4);
+	/**
+	 * @namespace Cabinet.StaticModel 
+	 */
+	var StaticModel = {};
 
-	exports.create = function (attributes) {
+	/**
+	 * Creates an instance of a model. 
+	 *   
+	 * @function create
+	 * @memberOf Cabinet.StaticModel
+	 * @param  [attributes] attributes Assign attributes on creation.
+	 * @return {Cabinet.Model} instance of the Model
+	 */
+	StaticModel.create = function (attributes) {
 
 		if (!this.schema)
 			throw new Error("A schema must be attached to instantiate a model");
@@ -142,16 +274,259 @@ var Cabinet =
 
 	}
 
+	StaticModel.find = function () {
+
+		return new Query();
+		
+	}
+
+	/**
+	 @todo
+
+	StaticModel.belongsTo = function () {
+		
+	}
+
+	StaticModel.belongsToMany = function () {
+		
+	}
+
+	StaticModel.hasOne = function () {
+		
+	}
+
+	StaticModel.hasMany = function () {
+		
+	}
+
+	StaticModel.remove = function () {
+
+	}
+
+
+
+	StaticModel.findOne = function () {
+
+	}
+
+	StaticModel.exec = function () {
+
+	}
+
+	**/
+
+	module.exports = StaticModel;
+
 /***/ },
 /* 3 */
 /***/ function(module, exports, __webpack_require__) {
 
-	exports.STRING = function () {
-		return true;
+	var _ = __webpack_require__(5);
+	var format = __webpack_require__(7).format;
+
+
+	/**
+	 * Expects a String.
+	 * 
+	 * @function STRING
+	 * @memberOf Cabinet.datatype
+	 * @param {string} value
+	 * @return {boolean} 
+	 */
+	exports.STRING = function (value) {
+
+		var msg = "%s is not a String.";
+
+		if (_.isString(value) || value === null)
+			return true;
+		else 
+			throw new Error(format(msg, value));	
+
+	};
+
+	/**
+	 * Expects a Boolean.
+	 * 
+	 * @function BOOLEAN
+	 * @memberOf Cabinet.datatype
+	 * @param {boolean} value
+	 * @return {boolean} 
+	 */
+	exports.BOOLEAN = function (value) {
+
+		var msg = "%s is not a Boolean.";
+
+		if (_.isBoolean(value) || value === null)
+			return true;
+		else 
+			throw new Error(format(msg, value));	
+
+	};
+
+	/**
+	 * Creates an ENUMERABLE datatype.
+	 *
+	 * @function ENUM
+	 * @memberOf Cabinet.datatype
+	 * @param {mixed} allowed  
+	 * @example
+	 * var ENUM = Cabinet.datatype.ENUM("allowed one", "allowed two"); 
+	 * ENUM("allowed"); => true
+	 * ENUM("non existing"); => throws Error
+	 */
+	exports.ENUM = function (allowed) {
+
+		if (!allowed)
+			throw new Error("Missing allowed enumerable values. ENUM(\"allow me\", \"and me\")");
+
+		// Convert arguments to array...
+		allowed = Array.prototype.slice.call(arguments);
+		
+		/**
+		 * Expects a value that is set on creation
+		 * @function VALIDATE_ENUM 
+		 * @param {mixed} value
+		 * @return {boolean}
+		 */
+		return function ENUM (value) {
+
+			var allowedValues = this;		
+
+			if (_.indexOf(allowedValues, value) >= 0) 
+				return true;
+			else
+				throw new Error(format("%s is not in the allowed values.", value));
+
+		}.bind(allowed);
+
 	};
 
 /***/ },
 /* 4 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var _ = __webpack_require__(5);
+	var format = __webpack_require__(7).format;
+
+	/**
+	 * @namespace Cabinet.Query 
+	 */
+	function Query () {
+		this.query = {};
+	}
+
+	/** 
+	 * @param  {String|Object} attribute 
+	 * @param  {mixed} val
+	 * @return {this}
+	 * @example
+	 *  var query = User.find("username", "John");
+	 *  //or
+	 *  var query = User.find({ username: "John", email: "john@mail.com" });
+	 *  //or
+	 *  var query = User.find({ username: "John", age: { greaterThan: 10, lessThan: 20 }})
+	 */
+	Query.prototype.where = function (attribute, val) {
+
+		if (_.isString(attribute)) {
+
+			this.query[attribute] = {
+				equals: val
+			}
+
+		} else if (_.isObject(attribute)) {
+			var whereObject = Query.ParseWhereObject(attribute);
+			_.merge(this.query, whereObject);
+		}
+
+		return this;
+
+	}
+
+	Query.prototype.limit = function (num) {
+		
+		if (!_.isNumber(num))
+			throw new Error("Can only limit by number.");
+
+		this.query.limit = num;
+
+		return this;
+
+	}
+
+	Query.prototype.skip = function (num) {
+
+		if (!_.isNumber(num))
+			throw new Error("Can only skip by number.");
+
+		this.query.skip = num;
+
+		return this;
+
+	}
+
+	Query.prototype.sort = function (algo, attribute) {
+
+		var map = {
+			"asc": "ascending",
+			"ascending": "ascending",
+			"+": "ascending",
+			"desc": "descending",
+			"descending": "descending",
+			"-": "descending"
+		}
+		
+		if (!map[algo])
+			throw new Error(format("Unknown sorting algorithm (%s)", algo));
+
+		if (!this.query.sort) 
+			this.query.sort = {};
+
+		this.query.sort[attribute] = map[algo];
+
+		return this;
+
+	}
+
+	Query.ParseWhereObject = function (where) {
+
+		var target = {};
+
+		_.each(where, function (val, key) {
+
+			if (_.isObject(val)) {			
+				// We assume its a friendly where clause
+				target[key] = val;
+
+			} else if (_.isString(val)) {
+
+				target[key] = {
+					equals: val
+				}			
+
+			}
+
+		})
+
+		return target;
+
+	}
+
+	module.exports = Query;
+	/*
+	{
+		username: {
+			equals: "string"		
+		},
+		age: {
+			greaterThan: 10,
+			lessThan: 20,
+			equal: 24
+		}
+	}*/
+
+/***/ },
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module, global) {/**
@@ -7312,10 +7687,10 @@ var Cabinet =
 	  }
 	}.call(this));
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(8)(module), (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(9)(module), (function() { return this; }())))
 
 /***/ },
-/* 5 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -7622,7 +7997,7 @@ var Cabinet =
 
 
 /***/ },
-/* 6 */
+/* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -8150,7 +8525,7 @@ var Cabinet =
 	}
 	exports.isPrimitive = isPrimitive;
 
-	exports.isBuffer = __webpack_require__(7);
+	exports.isBuffer = __webpack_require__(8);
 
 	function objectToString(o) {
 	  return Object.prototype.toString.call(o);
@@ -8194,7 +8569,7 @@ var Cabinet =
 	 *     prototype.
 	 * @param {function} superCtor Constructor function to inherit prototype from.
 	 */
-	exports.inherits = __webpack_require__(10);
+	exports.inherits = __webpack_require__(11);
 
 	exports._extend = function(origin, add) {
 	  // Don't do anything if add isn't an object
@@ -8212,10 +8587,10 @@ var Cabinet =
 	  return Object.prototype.hasOwnProperty.call(obj, prop);
 	}
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(9)))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(10)))
 
 /***/ },
-/* 7 */
+/* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
 	module.exports = function isBuffer(arg) {
@@ -8226,7 +8601,7 @@ var Cabinet =
 	}
 
 /***/ },
-/* 8 */
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
 	module.exports = function(module) {
@@ -8242,7 +8617,7 @@ var Cabinet =
 
 
 /***/ },
-/* 9 */
+/* 10 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// shim for using process in browser
@@ -8311,7 +8686,7 @@ var Cabinet =
 
 
 /***/ },
-/* 10 */
+/* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
 	if (typeof Object.create === 'function') {
