@@ -84,12 +84,17 @@ var Cabinet =
 	 *
 	 * @function createModel
 	 * @memberOf Cabinet
-	 * @param  {schema} schema
+	 * @param  {Object} schema 
+	 * @param {Function} [driverInstance] - an instance of a CabinetJS model driver
 	 * @return {Cabinet.StaticModel}
 	 */
-	Cabinet.createModel = function (schema) {
+	Cabinet.createModel = function (schema, driverInstance) {
 		
-		var staticModel = _.merge({}, Cabinet.StaticModel, { schema: schema });
+		var staticModel = _.merge({}, Cabinet.StaticModel, { 
+			schema: schema,
+			driver: driverInstance
+		});
+
 		return staticModel;
 
 	}
@@ -261,11 +266,12 @@ var Cabinet =
 	 * Creates an instance of a model. 
 	 *   
 	 * @function create
+	 * @todo   Default to Cabinet.REST driver if !this.driver
 	 * @memberOf Cabinet.StaticModel
 	 * @param  [attributes] attributes Assign attributes on creation.
 	 * @return {Cabinet.Model} instance of the Model
 	 */
-	StaticModel.create = function (attributes) {
+	StaticModel.create = function (attributes) {	
 
 		if (!this.schema)
 			throw new Error("A schema must be attached to instantiate a model");
@@ -276,8 +282,8 @@ var Cabinet =
 
 	StaticModel.find = function () {
 
-		return new Query();
-		
+		return new Query(this.driver);
+
 	}
 
 	/**
@@ -303,15 +309,6 @@ var Cabinet =
 
 	}
 
-
-
-	StaticModel.findOne = function () {
-
-	}
-
-	StaticModel.exec = function () {
-
-	}
 
 	**/
 
@@ -411,11 +408,17 @@ var Cabinet =
 	/**
 	 * @namespace Cabinet.Query 
 	 */
-	function Query () {
-		this.query = {};
+	function Query (driver) {
+
+		this.query = {};	
+		this.driver = driver;
+		this.isCollection = false;
+
 	}
 
 	/** 
+	 * @memberOf Cabinet.Query
+	 * @function where
 	 * @param  {String|Object} attribute 
 	 * @param  {mixed} val
 	 * @return {this}
@@ -443,6 +446,14 @@ var Cabinet =
 
 	}
 
+	/**
+	 * Adds a limit to the query.
+	 * 
+	 * @memberOf Cabinet.Query#
+	 * @function limit
+	 * @param  {Number} num
+	 * @return {this}
+	 */
 	Query.prototype.limit = function (num) {
 		
 		if (!_.isNumber(num))
@@ -454,6 +465,14 @@ var Cabinet =
 
 	}
 
+	/**
+	 * Adds a skip clause to the query.
+	 *
+	 * @memberOf Cabinet.Query#
+	 * @function skip
+	 * @param  {Number} num
+	 * @return {this}
+	 */
 	Query.prototype.skip = function (num) {
 
 		if (!_.isNumber(num))
@@ -465,6 +484,15 @@ var Cabinet =
 
 	}
 
+	/**
+	 * Adds a limit to the query.
+	 * 
+	 * @memberOf Cabinet.Query#
+	 * @function sort
+	 * @param  {String} algo - algorithm to use (allowed: asc, +, ascending or desc, -, descending)
+	 * @param  {String} attribute - attribute to sort by
+	 * @return {this}
+	 */
 	Query.prototype.sort = function (algo, attribute) {
 
 		var map = {
@@ -488,6 +516,57 @@ var Cabinet =
 
 	}
 
+	/**
+	 * Sends the query to the attached driver.
+	 * @memberOf Cabinet.Query#
+	 * @function exec
+	 * @param  {Function} fn - callback, called when driver fires it.
+	 * @return {this}
+	 */
+	Query.prototype.exec = function (fn) {
+
+		if (!this.driver)
+			throw new Error("No driver attached");
+
+		this.driver.exec(this.query, fn);
+
+		return this;
+
+	}
+
+
+	/**
+	 * Parses a deep "where" object
+	 *
+	 * @example
+	 *  var query = MyModel.query().where({
+	 *    username: "John", 
+	 *    email: {
+	 *      equals: "john@mail.com"
+	 *    },
+	 *    age: {
+	 *      greaterThan: 18,
+	 *      lessThan: 24
+	 *    }
+	 *  });
+	 *  // results in the following query object
+	 *  // {
+	 *  //   username: { 
+	 *  //	   equals: "John"
+	 *  //   },
+	 *  //   email: {
+	 *  //     equals: "john@mail.com"
+	 *  //   }, 
+	 *  //   age: {
+	 *  //     greaterThan: 18,
+	 *  //     lessThan: 24
+	 *  //   }
+	 *  // }
+	 * @memberOf Cabinet.Query
+	 * @function ParseWhereObject
+	 * @param  {Number} num
+	 * @return {this}
+	 */
 	Query.ParseWhereObject = function (where) {
 
 		var target = {};

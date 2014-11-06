@@ -1,5 +1,6 @@
 var Cabinet = require("..");
 var assert = require("assert");
+var DriverMock = require("./mock/DriverMock.js");
 
 describe("Query", function () {
 
@@ -126,7 +127,8 @@ describe("Query", function () {
 			sort: {
 				username: "descending"
 			}
-		}		
+		}	
+
 		it("adds a sort clause", function () {
 
 			query.sort("ascending", "username");
@@ -168,6 +170,27 @@ describe("Query", function () {
 			assert.throws(function () {
 				query.exec();
 			}, Error);
+
+		});
+
+		it("talks to the driver", function (done) {
+
+			var callbackCalled = false;
+
+			var MyModel = Cabinet.createModel({
+				username: Cabinet.datatype.STRING
+			}, DriverMock());
+
+			setTimeout(function () {
+				assert(callbackCalled);
+				done();
+			}, 100);
+
+			var query = MyModel.find();
+			query.exec(function (err, data) {
+				callbackCalled = true;
+			});
+
 		});
 
 	})

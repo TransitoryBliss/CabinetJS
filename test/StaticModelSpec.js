@@ -1,9 +1,12 @@
 var assert = require("assert");
 var Cabinet = require("..");
+var DriverMock = require("./mock/DriverMock.js");
 var Query = require("../lib/query.js");
 
 describe("StaticModel", function () {
+
 	describe("#create", function () {
+
 		it("throws Error if no schema attached", function () {
 			var MyModel = Cabinet.createModel();	
 			assert.throws(MyModel.create, Error);
@@ -53,6 +56,6 @@ describe("StaticModel", function () {
 			assert(query instanceof Query);
 
 		});
-
 	});
+	
 });
