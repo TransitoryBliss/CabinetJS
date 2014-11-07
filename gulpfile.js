@@ -5,6 +5,7 @@ var istanbul = require("gulp-istanbul");
 var rename = require("gulp-rename");
 var uglify = require("gulp-uglify");
 var jsdoc = require("gulp-jsdoc");
+var docco = require("gulp-docco");
 var format = require("util").format;
 
 /**
@@ -27,9 +28,16 @@ var webpackConfig = {
 }
 
 gulp.task("docs", function () {
-	gulp.src("./lib/**/*.js")
-  		.pipe(jsdoc('./docs'))
+	gulp.src("./lib/*.js")
+		.pipe(docco())
+		.pipe(gulp.dest("./docs"));
 })
+
+//
+//gulp.task("docs", function () {
+//	gulp.src("./lib/**/*.js")
+//  		.pipe(jsdoc('./docs'))
+//})
 
 gulp.task("dist", function () {
 	var config = Object.create(webpackConfig);

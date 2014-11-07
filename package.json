@@ -15,6 +15,7 @@
     "lodash": "~2.4.1",
     "gulp-uglify": "~1.0.1",
     "gulp-rename": "~1.2.0",
-    "gulp-jsdoc": "~0.1.4"
+    "gulp-jsdoc": "~0.1.4",
+    "gulp-docco": "0.0.4"
   }
 }
