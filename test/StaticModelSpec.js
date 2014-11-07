@@ -57,5 +57,54 @@ describe("StaticModel", function () {
 
 		});
 	});
+
+	describe("virtuals", function () {
+
+		it("can't set virtual with same name as existing attribute", function () {
+	
+			var User = Cabinet.createModel({
+				firstName: Cabinet.datatype.STRING				
+			});			
+
+			assert.throws(function () {
+				User.addVirtual("firstName", function (){});
+			}, Error);
+
+		});
+
+		it("virtual is called in correct context", function () {
+
+			var User = Cabinet.createModel({
+				firstName: Cabinet.datatype.STRING,
+				lastName: Cabinet.datatype.STRING,					
+			});			
+
+			User.addVirtual("fullName", function () {
+				return this.firstName + " " + this.lastName;
+			});
+
+			var user = User.create({firstName: "Robert", lastName: "Smith"});			
+			
+			assert.equal(user.get("fullName"), "Robert Smith");
+		});
+
+		it("can add virtuals on static model creation", function () {
+
+			var User = Cabinet.createModel({
+				firstName: Cabinet.datatype.STRING,
+				lastName: Cabinet.datatype.STRING,
+				virtuals: {
+					fullName: function ()  {
+						return this.firstName + " " + this.lastName;
+					}
+				}
+			});
+
+			var user = User.create({firstName: "Robert", lastName: "Smith"});						
+			assert.equal(user.get("fullName"), "Robert Smith");			
+
+		});	
+
+	})
 	
 });

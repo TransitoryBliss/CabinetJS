@@ -54,6 +54,7 @@ describe("Model", function () {
 
 	});	
 
+
 	describe("#on (events)", function () {
 		
 		var User = Cabinet.createModel({ title: Cabinet.datatype.STRING });
@@ -129,7 +130,7 @@ describe("Model", function () {
 
 	});
 
-	describe("using attribute object", function () {
+	describe("validation", function () {
 
 		var User = Cabinet.createModel({
 			username: {
@@ -157,6 +158,6 @@ describe("Model", function () {
 			assert.strictEqual(user.get("username"), "john");
 
 		});
-	})
+	});
 
 });
